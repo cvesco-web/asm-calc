@@ -34,7 +34,7 @@ jobs:
         run: |
           printf '25 + 7\nn\n' | ./calc_linux | grep "= 32"
           printf '100 / 4\nn\n' | ./calc_linux | grep "= 25"
-          printf '-3 * 8\nn\n' | ./calc_linux | grep "= -24"
+          printf '%s\nn\n' '-3 * 8' | ./calc_linux | grep "= -24"
           printf '0 / 0\nn\n' | ./calc_linux | grep "division by zero"
           echo "All tests passed"
 
