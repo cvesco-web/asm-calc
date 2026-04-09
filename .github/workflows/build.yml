@@ -1,0 +1,62 @@
+name: Build & Release calc.exe
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install NASM & MinGW-w64
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y nasm gcc-mingw-w64-x86-64
+
+      - name: Assemble & link Windows exe
+        run: |
+          nasm -f win64 calc.asm -o calc.obj
+          x86_64-w64-mingw32-gcc calc.obj -o calc.exe -lkernel32 -nostartfiles -e main
+
+      - name: Assemble & link Linux binary
+        run: |
+          nasm -f elf64 calc_linux.asm -o calc_linux.o
+          ld calc_linux.o -o calc_linux
+
+      - name: Smoke-test Linux binary
+        run: |
+          printf '25 + 7\nn\n' | ./calc_linux | grep "= 32"
+          printf '100 / 4\nn\n' | ./calc_linux | grep "= 25"
+          printf '-3 * 8\nn\n' | ./calc_linux | grep "= -24"
+          printf '0 / 0\nn\n' | ./calc_linux | grep "division by zero"
+          echo "All tests passed"
+
+      - name: Verify Windows PE format
+        run: file calc.exe | grep "PE32+"
+
+      - name: Create release tag
+        id: tag
+        run: |
+          TAG="v1.0.0-build.${{ github.run_number }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Build #${{ github.run_number }}"
+          body: |
+            Automated build from commit ${{ github.sha }}
+
+            **Download `calc.exe`** and run it in any Windows 10/11 x64 terminal.
+            **Download `calc_linux`** for Linux x86-64.
+          files: |
+            calc.exe
+            calc_linux
